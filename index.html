@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Neon Tetris (исправлено)</title>
 <style>
 :root{--bg:#050510;--grid:rgba(255,255,255,0.08);--cI:#00ffff;--cO:#ff00ff;--cT:#ff00cc;--cS:#00ff44;--cZ:#aa00ff;--cJ:#00bfff;--cL:#ffaa00}
@@ -27,6 +28,34 @@ button{padding:14px 28px;font-size:1.1rem;border:none;cursor:pointer;border-radi
 #next-label{font-size:1rem;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;text-shadow:0 0 8px rgba(255,255,255,.4)}
 #next-container{position:relative;width:96px;height:96px;background:rgba(0,0,0,.4);border:1px solid var(--grid);box-shadow:0 0 15px rgba(0,191,255,.1)}
 #next-container .cell{width:20px;height:20px}
+#touch-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: center;
+}
+.tc-btn {
+  width: 56px;
+  height: 56px;
+  font-size: 1.6rem;
+  border: 2px solid rgba(0, 191, 255, 0.5);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #00ffff;
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(0, 191, 255, 0.3);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+.tc-btn:hover {
+  background: rgba(0, 191, 255, 0.2);
+  box-shadow: 0 0 20px rgba(0, 191, 255, 0.6);
+}
+.tc-btn:active {
+  background: rgba(0, 191, 255, 0.4);
+  transform: scale(0.95);
+}
 </style>
 </head>
 <body>
@@ -41,6 +70,12 @@ button{padding:14px 28px;font-size:1.1rem;border:none;cursor:pointer;border-radi
 <div id="status-overlay"><div id="status-text">Готов к игре</div><div id="hint">Нажмите «Старт». Esc — пауза.</div></div>
 </div>
 <div id="next-wrap"><div id="next-label">Следующая</div><div id="next-container"></div></div>
+<div id="touch-controls">
+    <button class="tc-btn" data-act="left">⬅</button>
+    <button class="tc-btn" data-act="rotate">⟳</button>
+    <button class="tc-btn" data-act="right">➡</button>
+    <button class="tc-btn" data-act="down">⬇</button>
+  </div>
 </div>
 
 <script>
@@ -368,6 +403,19 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowUp') doRot();
 });
 
+document.querySelectorAll('.tc-btn').forEach(btn => {
+  const act = btn.dataset.act;
+  const handler = (e) => {
+    e.preventDefault();
+    if (!ga || pa) return;
+    if (act === 'left') move(-1);
+    if (act === 'right') move(1);
+    if (act === 'down') drop();
+    if (act === 'rotate') doRot();
+  };
+  btn.addEventListener('click', handler);
+  btn.addEventListener('touchstart', handler, { passive: false });
+});
 iB();
 NT = rT();
 NP = mP(NT);
