@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Тетрис</title>
+<style>
+:root{
+  --bg:#0a0a12;
+  --grid:rgba(0,191,255,.12);
+  --cyan:#00ffff;
+  --pink:#ff69b4;
+  --yellow:#ffd700;
+  --green:#39ff14;
+  --red:#ff4757;
+  --blue:#3742fa;
+  --orange:#ffa502;
+  --purple:#a55eea;
+}
+body{background:var(--bg);color:#e0e0ff;font-family:'Courier New',monospace;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;overflow:hidden}
+h1{font-size:1.4rem;color:var(--cyan);text-shadow:0 0 10px rgba(0,191,255,.5);margin:0 0 12px;letter-spacing:2px}
+#main-wrap{display:flex;gap:20px}
+#game-container{position:relative;width:240px;height:480px;background:linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.5)),url('фон.jpg') center/cover no-repeat;border:2px solid var(--grid);box-shadow:0 0 25px rgba(0,191,255,.15)}
+#game-container canvas{display:block}
+#next-wrap{display:flex;flex-direction:column;align-items:center;gap:12px}
+#next-label{font-size:.85rem;color:var(--cyan);text-transform:uppercase;letter-spacing:1px}
+#next-container{width:96px;height:96px;border:2px solid var(--grid);box-shadow:0 0 15px rgba(0,191,255,.1);background:rgba(0,0,0,.6)}
+#next-container canvas{display:block}
+#info{display:flex;flex-direction:column;gap:8px;align-items:center;margin-top:4px}
+#score{font-size:1rem;color:var(--cyan);text-shadow:0 0 8px rgba(0,191,255,.3)}
+#level{font-size:.85rem;color:var(--pink);text-shadow:0 0 8px rgba(255,105,180,.3)}
+#lines{font-size:.85rem;color:var(--yellow);text-shadow:0 0 8px rgba(255,215,0,.3)}
+#controls{display:flex;flex-direction:column;gap:10px;margin-top:14px;align-items:center}
+#controls button{background:0 0;border:2px solid var(--cyan);color:var(--cyan);padding:10px 28px;font-family:'Courier New',monospace;font-size:.95rem;cursor:pointer;text-transform:uppercase;letter-spacing:1px;transition:.2s;text-shadow:0 0 8px rgba(0,191,255,.5);box-shadow:0 0 12px rgba(0,191,255,.2)}
+#controls button:hover{background:rgba(0,191,255,.15);box-shadow:0 0 20px rgba(0,191,255,.5)}
+#controls button:active{transform:scale(.95)}
+#controls button:disabled{opacity:.4;cursor:not-allowed}
+#overlay{position:absolute;inset:0;background:rgba(0,0,0,.82);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:10}
+#overlay h2{color:var(--cyan);font-size:1.6rem;text-shadow:0 0 15px rgba(0,191,255,.5);margin:0}
+#overlay p{color:var(--pink);font-size:1.1rem;margin:0}
+#touch-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;width:96px}
+.tc-btn{width:44px;height:44px;font-size:1.3rem;border:2px solid rgba(0,191,255,.5);border-radius:8px;background:rgba(0,0,0,.5);color:var(--cyan);cursor:pointer;box-shadow:0 0 12px rgba(0,191,255,.3);user-select:none;-webkit-user-select:none;touch-action:manipulation;display:flex;align-items:center;justify-content:center}
+.tc-btn:hover{background:rgba(0,191,255,.2);box-shadow:0 0 20px rgba(0,191,255,.6)}
+.tc-btn:active{background:rgba(0,191,255,.4);transform:scale(.95)}
+#bg-label{display:flex;width:240px;margin-top:16px;background:rgba(255,105,180,.3);cursor:pointer;text-align:center;align-items:center;justify-content:center;border:2px solid rgba(255,105,180,.5);border-radius:8px;padding:12px;box-shadow:0 0 12px rgba(255,105,180,.3);color:#fff;font-size:1rem;font-weight:bold;text-transform:uppercase;user-select:none}
+#bg-label:hover{background:rgba(255,105,180,.5);box-shadow:0 0 20px rgba(255,105,180,.6)}
+#bg-label:active{transform:scale(.95)}
+</style>
+</head>
+<body>
+
+<h1>ТЕТРИС</h1>
+
+<div id="main-wrap">
+  <div id="game-container">
+    <canvas id="game" width="240" height="480"></canvas>
+    <div id="overlay">
+      <h2>ТЕТРИС</h2>
+      <p id="ovr-text">Нажми «Старт»</p>
+    </div>
+  </div>
+  <div id="next-wrap">
+    <div id="next-label">Следующая</div>
+    <div id="next-container"><canvas id="next" width="96" height="96"></canvas></div>
+    <div id="info">
+      <div id="score">Счёт: 0</div>
+      <div id="level">Уровень: 1</div>
+      <div id="lines">Линии: 0</div>
+    </div>
+    <div id="touch-controls">
+      <button class="tc-btn" data-act="left">⬅</button>
+      <button class="tc-btn" data-act="rotate">⟳</button>
+      <button class="tc-btn" data-act="right">➡</button>
+      <button class="tc-btn" data-act="down">⬇</button>
+    </div>
+  </div>
+</div>
+
+<label id="bg-label">🖼 Загрузить фон
+  <input type="file" id="bg-upload" accept="image/*" hidden>
+</label>
+
+<div id="controls">
+  <button id="start">Старт</button>
+  <button id="pause" disabled>Пауза</button>
+  <button id="reset" disabled>Сброс</button>
+</div>
+
+<script>
+let B,S,P,X,Y,T,NP,NT,tmr=null,pa=false,ga=false;
+let LV=0,LN=0;
+const C=document.getElementById('game'),c=C.getContext('2d');
+const NC=document.getElementById('next'),nc=NC.getContext('2d');
+const SB=document.getElementById('start'),PB=document.getElementById('pause'),RB=document.getElementById('reset');
+const SE=document.getElementById('score'),LE=document.getElementById('level'),LIE=document.getElementById('lines');
+const OV=document.getElementById('overlay'),OT=document.getElementById('ovr-text');
+
+// ===== ЗВУКИ =====
+let audioCtx=null;
+function getCtx(){
+  if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  return audioCtx;
+}
+function playSound(type){
+  const ctx=getCtx();
+  const osc=ctx.createOscillator();
+  const gain=ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  const now=ctx.currentTime;
+  switch(type){
+    case'drop':
+      osc.type='square';
+      osc.frequency.setValueAtTime(150,now);
+      osc.frequency.exponentialRampToValueAtTime(80,now+.15);
+      gain.gain.setValueAtTime(.1,now);
+      gain.gain.exponentialRampToValueAtTime(.01,now+.2);
+      osc.start(now);osc.stop(now+.2);
+      break;
+    case'line':
+      osc.type='sawtooth';
+      osc.frequency.setValueAtTime(200,now);
+      osc.frequency.setValueAtTime(300,now+.05);
+      osc.frequency.setValueAtTime(400,now+.1);
+      gain.gain.setValueAtTime(.1,now);
+      gain.gain.linearRampToValueAtTime(0,now+.12);
+      osc.start(now);osc.stop(now+.12);
+      break;
+    case'rotate':
+      osc.type='triangle';
+      osc.frequency.setValueAtTime(220,now);
+      osc.frequency.setValueAtTime(330,now+.06);
+      gain.gain.setValueAtTime(.07,now);
+      gain.gain.linearRampToValueAtTime(0,now+.08);
+      osc.start(now);osc.stop(now+.08);
+      break;
+    case'gameover':
+      osc.type='sine';
+      osc.frequency.setValueAtTime(60,now);
+      osc.frequency.setValueAtTime(40,now+.3);
+      gain.gain.setValueAtTime(.1,now);
+      gain.gain.linearRampToValueAtTime(0,now+.4);
+      osc.start(now);osc.stop(now+.4);
+      break;
+  }
+}
+
+// ===== ФИГУРЫ =====
+const TM={
+  I:{c:'#00ffff',s:[[[1,1,1,1]],[[1],[1],[1],[1]]]},
+  O:{c:'#ffd700',s:[[[1,1],[1,1]]]},
+  T:{c:'#a55eea',s:[[[0,1,0],[1,1,1]],[[1,0],[1,1],[1,0]],[[1,1,1],[0,1,0]],[[0,1],[1,1],[1,0]]]},
+  S:{c:'#39ff14',s:[[[0,1,1],[1,1,0]],[[1,0],[1,1],[0,1]]]},
+  Z:{c:'#ff4757',s:[[[1,1,0],[0,1,1]],[[0,1],[1,1],[1,0]]]},
+  J:{c:'#3742fa',s:[[[1,0,0],[1,1,1]],[[1,1],[1,0],[1,0]],[[1,1,1],[0,0,1]],[[0,1],[0,1],[1,1]]]},
+  L:{c:'#ffa502',s:[[[0,0,1],[1,1,1]],[[1,0],[1,0],[1,1]],[[1,1,1],[1,0,0]],[[1,1],[0,1],[0,1]]]}
+};
+const TS=Object.keys(TM);
+const COLS=10,ROWS=20,BS=24;
+
+function rT(){
+  return TS[Math.floor(Math.random()*TS.length)];
+}
+function mP(t){
+  return {type:t,rot:0};
+}
+function p(t,r){
+  return TM[t].s[r%TM[t].s.length];
+}
+
+function st(){
+  B=Array.from({length:ROWS},()=>Array(COLS).fill(0));
+  S=0;LV=0;LN=0;
+  SE.innerText='Счёт: 0';
+  LE.innerText='Уровень: 1';
+  LIE.innerText='Линии: 0';
+  NT=rT();NP=mP(NT);
+  sp();
+  ga=true;pa=false;
+  OV.style.display='none';
+  SB.disabled=true;PB.disabled=false;RB.disabled=false;
+  getCtx();
+}
+function sp(){
+  T=NT;P=NP;
+  NT=rT();NP=mP(NT);
+  drawN();
+  X=Math.floor((COLS-p(T,0)[0].length)/2);
+  Y=0;
+  if(chk(P,X,Y)){
+    over();return;
+  }
+  draw();
+}
+function chk(p,x,y){
+  const sh=p[0]?p:TM[T].s[P.rot%TM[T].s.length];
+  // Actually p here is rot index sometimes; let's use correct approach
+  const sh2=TM[T].s[(typeof p==='number'?p:P.rot)%TM[T].s.length];
+  for(let r=0;r<sh2.length;r++){
+    for(let cc=0;cc<sh2[r].length;cc++){
+      if(sh2[r][cc]){
+        const nx=x+cc,ny=y+r;
+        if(nx<0||nx>=COLS||ny>=ROWS)return true;
+        if(ny>=0&&B[ny][nx])return true;
+      }
+    }
+  }
+  return false;
+}
+function chkw(rot,x,y){
+  const sh=TM[T].s[rot%TM[T].s.length];
+  for(let r=0;r<sh.length;r++){
+    for(let cc=0;cc<sh[r].length;cc++){
+      if(sh[r][cc]){
+        const nx=x+cc,ny=y+r;
+        if(nx<0||nx>=COLS||ny>=ROWS)return true;
+        if(ny>=0&&B[ny][nx])return true;
+      }
+    }
+  }
+  return false;
+}
+function merge(){
+  const sh=TM[T].s[P.rot%TM[T].s.length];
+  for(let r=0;r<sh.length;r++){
+    for(let cc=0;cc<sh[r].length;cc++){
+      if(sh[r][cc]){
+        if(Y+r>=0)B[Y+r][X+cc]=T;
+      }
+    }
+  }
+}
+function sweep(){
+  let l=0;
+  for(let r=ROWS-1;r>=0;r--){
+    if(B[r].every(v=>v)){
+      B.splice(r,1);
+      B.unshift(Array(COLS).fill(0));
+      l++;r++;
+    }
+  }
+  if(l){
+    S+=[0,100,300,500,800][l];
+    LN+=l;
+    if(LN>=10){
+      LV=Math.floor(LN/10);
+      if(tmr)clearInterval(tmr);
+      tmr=setInterval(tk,Math.max(100,1000-LV*100));
+    }
+    SE.innerText='Счёт: '+S;
+    LE.innerText='Уровень: '+(LV+1);
+    LIE.innerText='Линии: '+LN;
+    playSound('line');
+  }
+}
+function move(d){
+  if(!ga||pa)return;
+  if(!chkw(P.rot,X+d,Y)){
+    X+=d;draw();
+  }
+}
+function doRot(){
+  if(!ga||pa)return;
+  const nr=(P.rot+1)%TM[T].s.length;
+  const kicks=[0,-1,1,-2,2];
+  for(let i=0;i<kicks.length;i++){
+    if(!chkw(nr,X+kicks[i],Y)){
+      P.rot=nr;X+=kicks[i];draw();
+      playSound('rotate');
+      return;
+    }
+  }
+}
+function drop(){
+  if(!ga||pa)return;
+  while(!chkw(P.rot,X,Y+1))Y++;
+  playSound('drop');
+  merge();sweep();
+  sp();
+}
+function tk(){
+  if(!ga||pa)return;
+  if(!chkw(P.rot,X,Y+1)){
+    Y++;draw();
+  }else{
+    playSound('drop');
+    merge();sweep();
+    sp();
+  }
+}
+function over(){
+  ga=false;
+  if(tmr)clearInterval(tmr);
+  playSound('gameover');
+  OT.innerText='Игра окончена!\nСчёт: '+S;
+  OV.style.display='flex';
+  SB.disabled=false;PB.disabled=true;
+}
+function draw(){
+  c.clearRect(0,0,C.width,C.height);
+  for(let r=0;r<ROWS;r++){
+    for(let cc=0;cc<COLS;cc++){
+      if(B[r][cc]){
+        dBlock(c,cc*BS,r*BS,TM[B[r][cc]].c);
+      }
+    }
+  }
+  const sh=TM[T].s[P.rot%TM[T].s.length];
+  for(let r=0;r<sh.length;r++){
+    for(let cc=0;cc<sh[r].length;cc++){
+      if(sh[r][cc]){
+        dBlock(c,(X+cc)*BS,(Y+r)*BS,TM[T].c);
+      }
+    }
+  }
+}
+function drawN(){
+  nc.clearRect(0,0,NC.width,NC.height);
+  const sh=TM[NP.type].s[0];
+  const bs2=16;
+  const offX=(96-sh[0].length*bs2)/2;
+  const offY=(96-sh.length*bs2)/2;
+  for(let r=0;r<sh.length;r++){
+    for(let cc=0;cc<sh[r].length;cc++){
+      if(sh[r][cc]){
+        dBlock2(nc,offX+cc*bs2,offY+r*bs2,bs2,TM[NP.type].c);
+      }
+    }
+  }
+}
+function dBlock(ctx,x,y,col){
+  ctx.fillStyle=col;
+  ctx.fillRect(x+1,y+1,BS-2,BS-2);
+  ctx.fillStyle='rgba(255,255,255,.3)';
+  ctx.fillRect(x+1,y+1,BS-2,4);
+  ctx.fillStyle='rgba(0,0,0,.3)';
+  ctx.fillRect(x+1,y+BS-5,BS-2,4);
+}
+function dBlock2(ctx,x,y,s,col){
+  ctx.fillStyle=col;
+  ctx.fillRect(x+1,y+1,s-2,s-2);
+  ctx.fillStyle='rgba(255,255,255,.3)';
+  ctx.fillRect(x+1,y+1,s-2,3);
+  ctx.fillStyle='rgba(0,0,0,.3)';
+  ctx.fillRect(x+1,y+s-4,s-2,3);
+}
+function togglePause(){
+  if(!ga)return;
+  pa=!pa;
+  if(pa){
+    OV.style.display='flex';
+    OT.innerText='Пауза';
+    if(tmr)clearInterval(tmr);
+  }else{
+    OV.style.display='none';
+    tmr=setInterval(tk,Math.max(100,1000-LV*100));
+  }
+}
+function reset(){
+  if(tmr)clearInterval(tmr);
+  ga=false;pa=false;
+  B=Array.from({length:ROWS},()=>Array(COLS).fill(0));
+  S=0;LV=0;LN=0;
+  SE.innerText='Счёт: 0';
+  LE.innerText='Уровень: 1';
+  LIE.innerText='Линии: 0';
+  OV.style.display='flex';
+  OT.innerText='Нажми «Старт»';
+  SB.disabled=false;PB.disabled=true;RB.disabled=true;
+  c.clearRect(0,0,C.width,C.height);
+  nc.clearRect(0,0,NC.width,NC.height);
+}
+
+// ===== УПРАВЛЕНИЕ =====
+function iB(){
+  SB.addEventListener('click',()=>{
+    st();
+    if(tmr)clearInterval(tmr);
+    tmr=setInterval(tk,1000);
+  });
+  PB.addEventListener('click',togglePause);
+  RB.addEventListener('click',reset);
+  document.addEventListener('keydown',e=>{
+    if(!ga&&e.key!=='Enter')return;
+    switch(e.key){
+      case'ArrowLeft':move(-1);break;
+      case'ArrowRight':move(1);break;
+      case'ArrowDown':drop();break;
+      case'ArrowUp':doRot();break;
+      case' ':e.preventDefault();togglePause();break;
+    }
+  });
+  document.querySelectorAll('.tc-btn').forEach(btn=>{
+    const act=btn.dataset.act;
+    const handler=(e)=>{
+      e.preventDefault();
+      if(!ga||pa)return;
+      if(act==='left')move(-1);
+      if(act==='right')move(1);
+      if(act==='down')drop();
+      if(act==='rotate')doRot();
+    };
+    btn.addEventListener('click',handler);
+    btn.addEventListener('touchstart',handler,{passive:false});
+  });
+  document.getElementById('bg-upload').addEventListener('change',function(e){
+    var file=e.target.files[0];
+    if(!file)return;
+    var reader=new FileReader();
+    reader.onload=function(ev){
+      document.getElementById('game-container').style.background=
+        'linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.5)), url("'+ev.target.result+'") center/cover no-repeat';
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ===== СТАРТ =====
+iB();
+B=Array.from({length:ROWS},()=>Array(COLS).fill(0));
+NT=rT();
+NP=mP(NT);
+drawN();
+c.clearRect(0,0,C.width,C.height);
+</script>
+
+</body>
+</html>
