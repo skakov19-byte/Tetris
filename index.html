@@ -29,15 +29,16 @@ button{padding:14px 28px;font-size:1.1rem;border:none;cursor:pointer;border-radi
 #next-container{position:relative;width:96px;height:96px;background:rgba(0,0,0,.4);border:1px solid var(--grid);box-shadow:0 0 15px rgba(0,191,255,.1)}
 #next-container .cell{width:20px;height:20px}
 #touch-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+  width: 96px;
 }
 .tc-btn {
-  width: 56px;
-  height: 56px;
-  font-size: 1.6rem;
+  width: 44px;
+  height: 44px;
+  font-size: 1.3rem;
   border: 2px solid rgba(0, 191, 255, 0.5);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.5);
@@ -47,6 +48,9 @@ button{padding:14px 28px;font-size:1.1rem;border:none;cursor:pointer;border-radi
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .tc-btn:hover {
   background: rgba(0, 191, 255, 0.2);
@@ -69,13 +73,12 @@ button{padding:14px 28px;font-size:1.1rem;border:none;cursor:pointer;border-radi
 <div id="game-container">
 <div id="status-overlay"><div id="status-text">Готов к игре</div><div id="hint">Нажмите «Старт». Esc — пауза.</div></div>
 </div>
-<div id="next-wrap"><div id="next-label">Следующая</div><div id="next-container"></div></div>
-<div id="touch-controls">
-    <button class="tc-btn" data-act="left">⬅</button>
+<div id="next-wrap"><div id="next-label">Следующая</div><div id="next-container"></div>
+  <button class="tc-btn" data-act="left">⬅</button>
     <button class="tc-btn" data-act="rotate">⟳</button>
     <button class="tc-btn" data-act="right">➡</button>
     <button class="tc-btn" data-act="down">⬇</button>
-  </div>
+</div>
 </div>
 
 <script>
