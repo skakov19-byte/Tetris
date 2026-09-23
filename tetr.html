@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Neon Tetris (исправлено)</title>
+<style>
+:root{--bg:#050510;--grid:rgba(255,255,255,0.08);--cI:#00ffff;--cO:#ff00ff;--cT:#ff00cc;--cS:#00ff44;--cZ:#aa00ff;--cJ:#00bfff;--cL:#ffaa00}
+body{background:var(--bg);color:#e0e0ff;font-family:'Courier New',monospace;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;overflow:hidden}
+h1{text-transform:uppercase;letter-spacing:4px;text-shadow:0 0 10px rgba(255,255,255,.3);margin-bottom:8px}
+#score{font-size:1.6rem;font-weight:bold;color:#fff;text-shadow:0 0 15px rgba(0,255,255,.6);margin-bottom:12px}
+#controls{display:flex;gap:12px;margin-bottom:16px}
+button{padding:14px 28px;font-size:1.1rem;border:none;cursor:pointer;border-radius:4px;font-family:inherit;font-weight:bold;text-transform:uppercase}
+#start-btn{background:#0f0;color:#000;box-shadow:0 0 15px rgba(0,255,0,.7)}
+#start-btn:hover:not(:disabled){box-shadow:0 0 30px rgba(0,255,0,.9)}
+#start-btn:disabled{background:#222;color:#555;box-shadow:none;cursor:default}
+#restart-btn{background:#f00;color:#000;box-shadow:0 0 15px rgba(255,0,0,.7)}
+#restart-btn:hover:not(:disabled){box-shadow:0 0 30px rgba(255,0,0,.9)}
+#restart-btn:disabled{background:#222;color:#555;box-shadow:none;cursor:default}
+#main-wrap{display:flex;gap:24px;align-items:flex-start}
+#game-container{position:relative;width:240px;height:480px;background:linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.5)),url('фон.jpg') center/cover no-repeat;border:2px solid var(--grid);box-shadow:0 0 25px rgba(0,191,255,.15)}
+#game-container::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px;pointer-events:none}
+.cell{position:absolute;width:24px;height:24px;box-sizing:border-box;filter:drop-shadow(0 0 6px currentColor)}
+#status-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(5,5,20,.85);backdrop-filter:blur(4px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10}
+#status-text{font-size:2.2rem;text-transform:uppercase;letter-spacing:3px;color:#fff;text-shadow:0 0 20px rgba(0,191,255,.8);margin-bottom:1rem}
+#hint{color:rgba(255,255,255,.6);font-size:.9rem;text-transform:uppercase}
+#next-wrap{display:flex;flex-direction:column;align-items:center}
+#next-label{font-size:1rem;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;text-shadow:0 0 8px rgba(255,255,255,.4)}
+#next-container{position:relative;width:96px;height:96px;background:rgba(0,0,0,.4);border:1px solid var(--grid);box-shadow:0 0 15px rgba(0,191,255,.1)}
+#next-container .cell{width:20px;height:20px}
+</style>
+</head>
+<body>
+<h1>Neon Tetris</h1>
+<div id="score">Счёт: 0</div>
+<div id="controls">
+<button id="start-btn">Старт</button>
+<button id="restart-btn" disabled>Рестарт</button>
+</div>
+<div id="main-wrap">
+<div id="game-container">
+<div id="status-overlay"><div id="status-text">Готов к игре</div><div id="hint">Нажмите «Старт». Esc — пауза.</div></div>
+</div>
+<div id="next-wrap"><div id="next-label">Следующая</div><div id="next-container"></div></div>
+</div>
+
+<script>
+const C = document.getElementById('game-container');
+const NC = document.getElementById('next-container');
+const SE = document.getElementById('score');
+const SB = document.getElementById('start-btn');
+const RB = document.getElementById('restart-btn');
+const ST = document.getElementById('status-text');
+const HE = document.getElementById('hint');
+
+const COLS = 10, ROWS = 20, CL = 24, NC2 = 20;
+let B, S, P, X, Y, T, NP, NT, tmr = null, pa = false, ga = false;
+let audioCtx = null;
+function getCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function playSound(type) {
+  const ctx = getCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  const now = ctx.currentTime;
+  switch (type) {
+    case 'drop':
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(150, now);
+      osc.frequency.exponentialRampToValueAtTime(80, now + 0.15);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+      osc.start(now); osc.stop(now + 0.2);
+      break;
+    case 'line':
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(200, now);
+      osc.frequency.setValueAtTime(300, now + 0.05);
+      osc.frequency.setValueAtTime(400, now + 0.1);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.linearRampToValueAtTime(0, now + 0.12);
+      osc.start(now); osc.stop(now + 0.12);
+      break;
+    case 'rotate':
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.setValueAtTime(330, now + 0.06);
+      gain.gain.setValueAtTime(0.07, now);
+      gain.gain.linearRampToValueAtTime(0, now + 0.08);
+      osc.start(now); osc.stop(now + 0.08);
+      break;
+    case 'gameover':
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(60, now);
+      osc.frequency.setValueAtTime(40, now + 0.3);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.linearRampToValueAtTime(0, now + 0.4);
+      osc.start(now); osc.stop(now + 0.4);
+      break;
+  }
+}
+
+
+const SH = {
+  I: [[1,1,1,1]],
+  O: [[1,1],[1,1]],
+  T: [[0,1,0],[1,1,1]],
+  S: [[0,1,1],[1,1,0]],
+  Z: [[1,1,0],[0,1,1]],
+  J: [[1,0,0],[1,1,1]],
+  L: [[0,0,1],[1,1,1]]
+};
+
+const CO = {
+  I: 'var(--cI)', O: 'var(--cO)', T: 'var(--cT)',
+  S: 'var(--cS)', Z: 'var(--cZ)', J: 'var(--cJ)', L: 'var(--cL)'
+};
+
+function iB() {
+  B = [];
+  for (let r = 0; r < ROWS; r++) B.push(new Array(COLS).fill(0));
+}
+
+function rT() {
+  const t = Object.keys(SH);
+  return t[Math.floor(Math.random() * t.length)];
+}
+
+function mP(t) {
+  return SH[t].map(r => [...r]);
+}
+
+function draw() {
+  C.innerHTML = '';
+  // Рисуем застывшие блоки
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (B[r][c]) {
+        const e = document.createElement('div');
+        e.className = 'cell';
+        e.style.left = c * CL + 'px';
+        e.style.top = r * CL + 'px';
+        e.style.backgroundColor = CO[B[r][c]];
+        e.style.color = CO[B[r][c]];
+        C.appendChild(e);
+      }
+    }
+  }
+  // Рисуем текущую фигуру
+  if (P && ga) {
+    for (let r = 0; r < P.length; r++) {
+      for (let c = 0; c < P[r].length; c++) {
+        if (P[r][c]) {
+          const e = document.createElement('div');
+          e.className = 'cell';
+          e.style.left = (X + c) * CL + 'px';
+          e.style.top = (Y + r) * CL + 'px';
+          e.style.backgroundColor = CO[T];
+          e.style.color = CO[T];
+          C.appendChild(e);
+        }
+      }
+    }
+  }
+  // Статус-оверлей
+  if (!ga || pa) {
+    const o = document.createElement('div');
+    o.id = 'status-overlay';
+    o.innerHTML = '<div id="status-text">' + (ST.innerText || 'Готов к игре') + '</div>' +
+                  '<div id="hint">' + (HE.innerText || '') + '</div>';
+    C.appendChild(o);
+  }
+  drawNext();
+}
+
+function drawNext() {
+  NC.innerHTML = '';
+  if (!NP) return;
+  const w = NP[0].length, h = NP.length;
+  const ox = Math.floor((4 - w) / 2);
+  const oy = Math.floor((4 - h) / 2);
+  for (let r = 0; r < h; r++) {
+    for (let c = 0; c < w; c++) {
+      if (NP[r][c]) {
+        const e = document.createElement('div');
+        e.className = 'cell';
+        e.style.left = (ox + c) * NC2 + 'px';
+        e.style.top = (oy + r) * NC2 + 'px';
+        e.style.backgroundColor = CO[NT];
+        e.style.color = CO[NT];
+        NC.appendChild(e);
+      }
+    }
+  }
+}
+
+function spawn() {
+  T = NT;
+  P = NP;
+  X = Math.floor((COLS - P[0].length) / 2);
+  Y = 0;
+  NT = rT();
+  NP = mP(NT);
+}
+
+function initP() {
+  NT = rT();
+  NP = mP(NT);
+  spawn();
+}
+
+function col(bd, p, ox, oy) {
+  for (let y = 0; y < p.length; y++) {
+    for (let x = 0; x < p[y].length; x++) {
+      if (!p[y][x]) continue;
+      const bx = ox + x, by = oy + y;
+      if (bx < 0 || bx >= COLS || by >= ROWS) return true;
+      if (by >= 0 && bd[by][bx]) return true;
+    }
+  }
+  return false;
+}
+
+function merge() {
+  for (let y = 0; y < P.length; y++) {
+    for (let x = 0; x < P[y].length; x++) {
+      if (P[y][x] && Y + y >= 0) {
+        B[Y + y][X + x] = T;
+      }
+    }
+  }
+}
+
+// Исправленная функция поворота
+function rot(p) {
+  const h = p.length;
+  const w = p[0].length; // было ошибочно: p[0].lengt
+  const np = [];
+  for (let y = 0; y < w; y++) {
+    np.push([]);
+    for (let x = h - 1; x >= 0; x--) {
+      np[y].push(p[x][y]);
+    }
+  }
+  return np;
+}
+
+function sweep() {
+  let l = 0;
+  for (let y = ROWS - 1; y >= 0; y--) {
+    if (B[y].every(v => v)) {
+      B.splice(y, 1);
+      B.unshift(new Array(COLS).fill(0));
+      l++;
+      y++;
+    }
+  }
+  if (l) {
+    S += [0, 100, 300, 500, 800][l];
+    SE.innerText = 'Счёт: ' + S;
+    playSound('line');
+  }
+}
+
+function drop() {
+  if (!ga || pa) return;
+  if (!col(B, P, X, Y + 1)) {
+    Y++;
+    draw();
+    return;
+  }
+  playSound('drop');
+  merge();
+  sweep();
+  spawn();
+  if (col(B, P, X, Y)) {
+    over();
+    return;
+  }
+  draw();
+}
+
+function move(d) {
+  if (!ga || pa) return;
+  if (!col(B, P, X + d, Y)) {
+    X += d;
+    draw();
+  }
+}
+
+function doRot() {
+  if (!ga || pa) return;
+  const n = rot(P);
+  // Пробуем сдвинуть влево/вправо, если поворот упирается в стенку
+  for (const o of [0, -1, 1, -2, 2]) {
+    if (!col(B, n, X + o, Y)) {
+      P = n;
+      X += o;
+      draw();
+      playSound('rotate');
+      return;
+    }
+  }
+}
+
+function over() {
+  ga = false;
+  clearInterval(tmr);
+  tmr = null;
+  ST.innerText = 'Game Over!';
+  HE.innerText = 'Нажмите «Старт» или «Рестарт»';
+  SB.disabled = false;
+  SB.textContent = 'Старт';
+  RB.disabled = false;
+  playSound('gameover');
+  draw();
+}
+
+function tog() {
+  if (!ga) return;
+  pa = !pa;
+  ST.innerText = pa ? 'ПАУЗА' : '';
+  HE.innerText = pa ? 'Нажмите Esc, чтобы продолжить' : 'Esc — пауза';
+  draw();
+}
+
+function start() {
+  iB();
+  S = 0;
+  SE.innerText = 'Счёт: 0';
+  ga = true;
+  getCtx();
+  pa = false;
+  initP();
+  if (tmr) clearInterval(tmr);
+  tmr = setInterval(drop, 600);
+  ST.innerText = '';
+  HE.innerText = 'Esc — пауза';
+  SB.disabled = true;
+  SB.textContent = 'Играет';
+  RB.disabled = false;
+  draw();
+}
+
+function restart() {
+  clearInterval(tmr);
+  tmr = null;
+  ga = false;
+  pa = false;
+  start();
+}
+
+SB.addEventListener('click', start);
+RB.addEventListener('click', restart);
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    tog();
+    return;
+  }
+  if (!ga || pa) return;
+  if (e.key === 'ArrowLeft') move(-1);
+  if (e.key === 'ArrowRight') move(1);
+  if (e.key === 'ArrowDown') drop();
+  if (e.key === 'ArrowUp') doRot();
+});
+
+iB();
+NT = rT();
+NP = mP(NT);
+draw();
+</script>
+</body>
+</html>
