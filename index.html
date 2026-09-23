@@ -422,6 +422,24 @@ document.querySelectorAll('.tc-btn').forEach(btn => {
   btn.addEventListener('click', handler);
   btn.addEventListener('touchstart', handler, { passive: false });
 });
+  const bgUpload = document.getElementById('bg-upload');
+const bgBtn = document.getElementById('bg-btn');
+
+bgBtn.addEventListener('click', () => bgUpload.click());
+
+bgUpload.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const imgUrl = ev.target.result;
+    document.getElementById('game-container').style.background =
+      `linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.5)), url('${imgUrl}') center/cover no-repeat`;
+  };
+  reader.readAsDataURL(file);
+});
+
 iB();
 NT = rT();
 NP = mP(NT);
