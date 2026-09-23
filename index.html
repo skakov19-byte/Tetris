@@ -84,7 +84,19 @@ button{padding:14px 28px;font-size:1.1rem;border:none;cursor:pointer;border-radi
   🖼 Загрузить фон
   <input type="file" id="bg-upload" accept="image/*" style="display:none">
 </label>
-  
+  <script>
+document.getElementById('bg-upload').addEventListener('change', function(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    document.getElementById('game-container').style.background =
+      'linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.5)), url("' + ev.target.result + '") center/cover no-repeat';
+  };
+  reader.readAsDataURL(file);
+});
+</script>
+
 <script>
 const C = document.getElementById('game-container');
 const NC = document.getElementById('next-container');
@@ -420,23 +432,7 @@ document.querySelectorAll('.tc-btn').forEach(btn => {
     if (act === 'down') drop();
     if (act === 'rotate') doRot();
   };
-  btn.addEventListener('click', handler);
-  btn.addEventListener('touchstart', handler, { passive: false });
-});
-  const bgUpload = document.getElementById('bg-upload');
-
-bgUpload.addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    const imgUrl = ev.target.result;
-    document.getElementById('game-container').style.background =
-      `linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.5)), url('${imgUrl}') center/cover no-repeat`;
-  };
-  reader.readAsDataURL(file);
-});
+ 
 
 iB();
 NT = rT();
