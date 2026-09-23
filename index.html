@@ -84,18 +84,7 @@ button{padding:14px 28px;font-size:1.1rem;border:none;cursor:pointer;border-radi
   🖼 Загрузить фон
   <input type="file" id="bg-upload" accept="image/*" style="display:none">
 </label>
-  <script>
-document.getElementById('bg-upload').addEventListener('change', function(e) {
-  var file = e.target.files[0];
-  if (!file) return;
-  var reader = new FileReader();
-  reader.onload = function(ev) {
-    document.getElementById('game-container').style.background =
-      'linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.5)), url("' + ev.target.result + '") center/cover no-repeat';
-  };
-  reader.readAsDataURL(file);
-});
-</script>
+ 
 
 <script>
 const C = document.getElementById('game-container');
@@ -438,6 +427,18 @@ iB();
 NT = rT();
 NP = mP(NT);
 draw();
+   
+document.getElementById('bg-upload').addEventListener('change', function(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    document.getElementById('game-container').style.background =
+      'linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.5)), url("' + ev.target.result + '") center/cover no-repeat';
+  };
+  reader.readAsDataURL(file);
+});
+
 </script>
 </body>
 </html>
